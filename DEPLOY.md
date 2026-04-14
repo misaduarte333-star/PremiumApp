@@ -1,43 +1,56 @@
-# Guía de Despliegue en Easypanel (EC2)
+# Despliegue en AWS EC2 con EasyPanel
 
-Esta guía explica cómo configurar el despliegue automático de la aplicación utilizando **GitHub Actions** y **Easypanel**.
+## Descripción General
 
-## 1. Configuración en GitHub (Secrets)
+PremiumApp es una aplicación Next.js 15 completamente dockerizada. Puede ser desplegada en AWS EC2 usando EasyPanel.
 
-Para que el despliegue automático funcione, ve a tu repositorio en GitHub:
-**Settings > Secrets and variables > Actions > New repository secret**
+## Requisitos Previos
 
-Agrega los siguientes secretos:
+- Cuenta en AWS
+- EasyPanel instalado en una instancia EC2
+- GitHub Personal Access Token (PAT)
+- Variables de entorno de Supabase
 
-| Secreto | Descripción | Ejemplo |
-| :--- | :--- | :--- |
-| `EC2_HOST` | IP pública de tu instancia EC2 | `54.123.45.67` |
-| `EC2_USER` | Usuario para SSH | `ubuntu` |
-| `EC2_SSH_KEY` | Contenido de tu archivo `.pem` | `-----BEGIN RSA...` |
-| `NEXT_PUBLIC_SUPABASE_URL` | URL de tu proyecto Supabase | `https://xyz.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon Key de Supabase | `eyJhbGci...` |
-| `EASYPANEL_WEBHOOK` | (Opcional) URL del webhook de la app | `https://panel.tudominio.com/api/hooks/...` |
+## Configuración de Despliegue en EasyPanel
 
-> [!IMPORTANT]
-> Las variables `NEXT_PUBLIC_` deben estar en GitHub Secrets **antes** de hacer el build, ya que Next.js las inyecta en el código del navegador durante la compilación. Sin ellas, la app arrancará en "Modo Demo".
+### 1. Preparar Variables de Entorno
 
-> [!NOTE]
-> El workflow utiliza `GITHUB_TOKEN` para subir la imagen a **GitHub Container Registry (GHCR)** de forma gratuita.
+**En AWS Systems Manager → Parameter Store o en .env.local:**
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+```
 
-## 2. Configuración en Easypanel
+### 2. Crear Aplicación en EasyPanel
 
-1. Entra a tu dashboard de Easypanel en la EC2.
-2. Crea un nuevo **Project** (si no tienes uno).
-3. Crea un nuevo **Service** de tipo **App**.
-4. En **Source**, selecciona **Docker Image**.
-5. Configura la imagen como: `ghcr.io/tu-usuario/tu-repositorio:latest`
-   - *Nota: Asegúrate de que el paquete en GitHub sea público o configura el Docker Registry Auth en Easypanel.*
-6. En **Environment**, agrega todas las variables necesarias (ver `.env.example`):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `PORT=3000`
-   - `HOSTNAME=0.0.0.0`
+1. Accede a EasyPanel en tu instancia EC2
+2. Ve a **Applications** → **Add New Application**
+3. Selecciona **Docker** como método de despliegue
+4. Configura los siguientes valores:
+
+| Campo | Valor |
+|-------|-------|
+| **Application Name** | premium-app |
+| **Repository URL** | `https://github.com/misaduarte333-star/PremiumApp.git` |
+| **Branch** | `master` |
+| **Dockerfile Path** | `./Dockerfile` |
+| **Container Port** | `3002` |
+| **Public Port** | `3002` |
+| **Restart Policy** | `unless-stopped` |
+
+### 3. Configurar Variables de Entorno en EasyPanel
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+NODE_ENV=production
+```
+
+### 4. Health Check
+
+La aplicación expone `GET /api/health` en el puerto **3002**:
 7. **Configurar el Webhook**:
    - En Easypanel, ve a la pestaña **General** del servicio.
    - Busca la sección **Deploy Webhook**.
