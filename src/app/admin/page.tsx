@@ -99,6 +99,7 @@ export default function AdminDashboard() {
                 c.barbero_id === b.id && (c.estado === 'en_proceso' || c.estado === 'por_cobrar')
             )
             const bloqueoActivo = bloqueosToday.find(bl => {
+                if (!bl.fecha_inicio || !bl.fecha_fin) return false
                 const s = getMinsFromHermosilloString(bl.fecha_inicio)
                 const e = getMinsFromHermosilloString(bl.fecha_fin)
                 return bl.barbero_id === b.id && nowMins >= s && nowMins < e
