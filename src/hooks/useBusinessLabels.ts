@@ -59,7 +59,8 @@ export function useBusinessLabels() {
                     services: 'Servicios',
                     location: type === 'Barbero' ? 'Estación' : 'Mesa',
                     businessName: sucursal.nombre || sucursalNombre || 'Premium Service',
-                    businessType: sucursal.tipo_prestador_label || 'Barbería'
+                    businessType: sucursal.tipo_prestador_label || 'Barbería',
+                    loading: false,
                 })
             }
         }
