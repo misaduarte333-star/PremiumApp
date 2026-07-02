@@ -293,7 +293,7 @@ export function FinanzasProfesional({ profesional, onBack }: FinanzasProfesional
             </div>
 
             {/* Meta control and new expense section - refined to be secondary */}
-            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-card border border-border p-8 rounded-[2.5rem] relative overflow-hidden group">
+            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-card border border-border p-4 sm:p-8 rounded-2xl sm:rounded-[2.5rem] relative overflow-hidden group">
                 <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                 
                 <div className="flex items-center gap-4 relative z-10">
@@ -436,7 +436,7 @@ export function FinanzasProfesional({ profesional, onBack }: FinanzasProfesional
 
             {/* Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="relative p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl overflow-hidden group">
+                <Card className="relative p-4 sm:p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl sm:rounded-3xl overflow-hidden group">
                     <CardContent className="p-0">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -453,7 +453,7 @@ export function FinanzasProfesional({ profesional, onBack }: FinanzasProfesional
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="relative p-6 bg-red-500/10 border border-red-500/20 rounded-3xl overflow-hidden group">
+                <Card className="relative p-4 sm:p-6 bg-red-500/10 border border-red-500/20 rounded-2xl sm:rounded-3xl overflow-hidden group">
                     <CardContent className="p-0">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
@@ -475,7 +475,7 @@ export function FinanzasProfesional({ profesional, onBack }: FinanzasProfesional
                     </CardContent>
                 </Card>
 
-                <Card className={`relative p-6 rounded-3xl overflow-hidden group ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/10 border-emerald-500/30 shadow-emerald-500/10' : 'bg-primary/10 border-primary/30 shadow-primary/5'}`}>
+                <Card className={`relative p-4 sm:p-6 rounded-2xl sm:rounded-3xl overflow-hidden group ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/10 border-emerald-500/30 shadow-emerald-500/10' : 'bg-primary/10 border-primary/30 shadow-primary/5'}`}>
                     <CardContent className="p-0 relative z-10">
                         <div className="flex items-center gap-3 mb-4">
                             <div className={`p-2 rounded-lg border ${metrics.remaining === 0 && metrics.allPaid ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-primary/20 text-primary border-primary/30'}`}>
@@ -567,7 +567,72 @@ export function FinanzasProfesional({ profesional, onBack }: FinanzasProfesional
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    {/* Vista móvil para celulares (lista de bloques de gasto) */}
+                    <div className="sm:hidden divide-y divide-foreground/5">
+                        {gastos.map((gasto) => (
+                            <div key={gasto.id} className="p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-black text-foreground uppercase tracking-tight">{gasto.descripcion}</span>
+                                        <span className="text-[9px] text-foreground/20 font-medium uppercase tracking-tighter mt-0.5">
+                                            {format(new Date(gasto.fecha_pago), 'PPP', { locale: es })}
+                                        </span>
+                                    </div>
+                                    <span className="text-sm font-black text-foreground">${gasto.monto.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {gasto.es_recurrente ? (
+                                        <Badge className="bg-primary/10 text-primary border-primary/20 text-[8px] font-black uppercase tracking-widest">
+                                            {gasto.frecuencia}
+                                        </Badge>
+                                    ) : (
+                                        <span className="text-[8px] text-foreground/25 font-bold uppercase tracking-widest">Puntual</span>
+                                    )}
+                                    {gasto.pagado ? (
+                                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] font-black uppercase tracking-widest">PAGADO</Badge>
+                                    ) : (
+                                        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[8px] font-black uppercase tracking-widest">PENDIENTE</Badge>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 pt-1">
+                                    {!gasto.pagado && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="h-8 px-2 flex-1 border-emerald-500/30 bg-emerald-500/5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 flex items-center justify-center gap-1 text-[9px] font-black uppercase"
+                                            onClick={() => handlePayGasto(gasto.id)}
+                                        >
+                                            <Check className="w-3.5 h-3.5" /> PAGAR
+                                        </Button>
+                                    )}
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-8 w-8 border-border bg-muted text-foreground/40 hover:text-primary hover:border-primary/40 hover:bg-primary/10 shrink-0"
+                                        onClick={() => handleEditClick(gasto)}
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-8 w-8 border-red-500/20 bg-red-500/5 text-red-400 hover:text-red-300 hover:border-red-500/40 hover:bg-red-500/10 shrink-0"
+                                        onClick={() => handleDeleteGasto(gasto.id)}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {gastos.length === 0 && (
+                            <div className="p-8 text-center text-foreground/20 uppercase font-black tracking-widest text-[9px]">
+                                Sin gastos registrados este mes
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Vista de tabla para pantallas grandes (tablets/desktops) */}
+                    <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-foreground/5 border-b border-foreground/5">
                                 <tr>

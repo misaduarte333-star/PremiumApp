@@ -135,14 +135,14 @@ export default function ServiciosPage() {
                 {/* Header (Desktop Only) - Compact Elite Style */}
                 <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8962E] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                            <Layers className="w-7 h-7 text-black" strokeWidth={2.5} />
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <Layers className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-none">
-                                Panel de <span className="text-gradient-gold italic">Servicios</span>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Gestión de <span className="text-gradient-gold italic">Servicios</span>
                             </h1>
-                            <p className="text-muted-foreground mt-1 text-xs font-bold uppercase tracking-widest opacity-70">
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
                                 Catálogo y precios de {businessType?.toLowerCase() || 'servicios'}
                             </p>
                         </div>
@@ -154,14 +154,14 @@ export default function ServiciosPage() {
                             <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
                                 {formattedTime}
                             </span>
-                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em]">
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
                                 {formattedDate}
                             </span>
                         </div>
 
                         <Button 
                             onClick={handleNew}
-                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl"
+                            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 h-11 px-6 rounded-xl transition-all"
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Nuevo Servicio
@@ -453,7 +453,7 @@ function ServicioModal({
                         <Button 
                             type="submit" 
                             disabled={loading}
-                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-black uppercase tracking-widest text-[10px] px-8 rounded-xl shadow-lg shadow-gold/20"
+                            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] px-8 rounded-xl shadow-md shadow-primary/10"
                         >
                             {loading && <div className="spinner w-4 h-4 mr-2" />}
                             {servicio ? 'Guardar Cambios' : 'Crear Servicio'}

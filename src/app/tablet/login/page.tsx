@@ -223,7 +223,7 @@ export default function TabletLoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="relative w-full py-3.5 mt-1 rounded-lg font-bold text-sm uppercase tracking-wider overflow-hidden transition-all duration-300 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group bg-gradient-gold text-black hover:shadow-lg hover:shadow-primary/30"
+                            className="relative w-full py-3.5 mt-1 rounded-lg font-bold text-sm uppercase tracking-wider overflow-hidden transition-all duration-300 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group bg-accent text-black hover:bg-accent/90 hover:shadow-md hover:shadow-primary/20"
                         >
                             <span className="relative z-10 flex items-center justify-center gap-2">
                                 {loading ? (

@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useBusinessLabels } from '@/hooks/useBusinessLabels'
 import type { CitaDesdeVista, EstadoCita, Servicio, Barbero } from '@/lib/types'
 import { ClientAutocomplete } from '@/components/ClientAutocomplete'
+import { CheckOutModal } from '@/components/CheckOutModal'
 import { 
     AlertTriangle, 
     Plus, 
@@ -69,6 +70,7 @@ function CitasContent() {
     const [editingCita, setEditingCita] = useState<CitaDesdeVista | null>(null)
     const [initialOrigen, setInitialOrigen] = useState<'whatsapp' | 'walkin'>('whatsapp')
     const [currentTime, setCurrentTime] = useState(new Date())
+    const [checkoutCita, setCheckoutCita] = useState<CitaDesdeVista | null>(null)
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -216,39 +218,37 @@ function CitasContent() {
         <div className="relative min-h-full bg-background selection:bg-primary selection:text-black p-4 lg:p-8">
             <div className="max-w-[1600px] mx-auto space-y-6 lg:space-y-8">
                 {/* Header (Desktop Only) - Compact Elite Style */}
-                <header className="hidden lg:flex items-center justify-between font-display">
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
                     <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-border mt-1 shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)]">
-                            <Users className="text-primary w-6 h-6" />
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <CalendarIcon className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
-                        <div className="space-y-0.5">
-                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-foreground">Gestión de Citas</h2>
-                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em]">Panel de Control de Agenda</p>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Gestión de <span className="text-gradient-gold italic">Citas</span>
+                            </h1>
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
+                                Panel de Control de Agenda
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Time & Date - Premium Compact Style */}
-                        <div className="bg-muted/30 backdrop-blur-xl border border-border/50 rounded-2xl px-5 py-2 flex items-center gap-5 shadow-sm group hover:border-primary/30 transition-all duration-500">
-                            <div className="flex flex-col items-end text-foreground text-right">
-                                <p className="text-sm font-black tracking-tight tabular-nums leading-none mb-1">
-                                    {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                </p>
-                                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-none">
-                                    {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
-                                </p>
-                            </div>
-                            <div className="h-8 w-[1px] bg-border/50 group-hover:bg-primary/20 transition-colors" />
-                            <div className="size-8 rounded-xl bg-background flex items-center justify-center border border-border group-hover:border-primary/20 transition-all">
-                                <Clock className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
+                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                            </span>
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
+                                {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
+                            </span>
                         </div>
 
                         <Button 
                             onClick={() => handleNewCita('whatsapp')}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider shadow-lg shadow-primary/20 h-11 px-6 rounded-2xl text-[11px] transition-all hover:scale-[1.02] active:scale-95"
+                            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 h-11 px-6 rounded-xl transition-all"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Plus className="w-5 h-5 mr-2" />
                             Nueva Cita
                         </Button>
                     </div>
@@ -258,14 +258,14 @@ function CitasContent() {
                 <div className="lg:hidden flex items-center justify-between pt-2">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                            <Users className="text-primary w-5 h-5" />
+                            <CalendarIcon className="text-primary w-5 h-5" />
                         </div>
-                        <h2 className="text-xl font-black tracking-tight uppercase italic text-foreground">Citas</h2>
+                        <h2 className="text-xl font-black tracking-tight uppercase italic text-foreground font-display">Citas</h2>
                     </div>
                     <Button 
                         size="icon"
                         onClick={() => handleNewCita('whatsapp')}
-                        className="rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        className="rounded-xl bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/10"
                     >
                         <Plus className="w-5 h-5" />
                     </Button>
@@ -448,7 +448,7 @@ function CitasContent() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => handleStatusChange(cita, 'finalizada')}
+                                                        onClick={() => setCheckoutCita(cita)}
                                                         className="h-9 px-3 rounded-xl bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 border border-blue-500/10"
                                                         title="Finalizar Cita"
                                                     >
@@ -501,6 +501,17 @@ function CitasContent() {
                     />
                 )
             }
+            {checkoutCita && (
+                <CheckOutModal
+                    cita={checkoutCita}
+                    isOpen={!!checkoutCita}
+                    onClose={() => setCheckoutCita(null)}
+                    onUpdate={() => {
+                        setCheckoutCita(null)
+                        cargarCitas()
+                    }}
+                />
+            )}
             </div>
         </div>
     )
@@ -949,7 +960,7 @@ function CitaModal({ cita, allCitas, onClose, onSave, initialOrigen }: {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="flex-2 grow-[2] h-12 rounded-xl bg-primary text-primary-foreground font-black uppercase tracking-[0.1em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            className="flex-2 grow-[2] h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 active:scale-95 transition-all"
                         >
                             {loading ? (
                                 <Loader2 className="size-5 animate-spin" />

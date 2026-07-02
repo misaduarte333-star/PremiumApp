@@ -847,7 +847,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, profesionalId, sucursalI
                                     "h-12 sm:flex-[2] rounded-xl font-black uppercase tracking-tight text-[13px] transition-all",
                                     loading 
                                         ? 'bg-primary/20 text-black/40 cursor-not-allowed' 
-                                        : 'bg-gradient-to-r from-primary to-amber-500 text-black shadow-lg shadow-primary/20 active:scale-[0.98]'
+                                        : 'bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/10 active:scale-[0.98]'
                                 )}
                             >
                                 {loading ? (
@@ -884,7 +884,7 @@ export function TabletNuevaCitaModal({ isOpen, onClose, profesionalId, sucursalI
                                         setShowPastConfirm(false)
                                         handleSubmit(undefined, true)
                                     }}
-                                    className="w-full h-12 sm:h-14 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl active:scale-[0.98] shadow-xl shadow-amber-900/10"
+                                    className="w-full h-12 sm:h-14 bg-amber-500 hover:bg-amber-600 text-black font-black uppercase tracking-widest rounded-xl sm:rounded-2xl active:scale-[0.98] shadow-md shadow-amber-500/10"
                                 >
                                     Confirmar Registro
                                 </Button>

@@ -293,21 +293,21 @@ function KPICard({ title, value, sub, icon, color, loading }:
     { title: string; value: string | number; sub: string; icon: string; color: string; loading: boolean }) {
     const c = KPI_COLOR[color] ?? KPI_COLOR.purple
     return (
-        <div className={`rounded-2xl border border-border/60 bg-card p-5 flex flex-col gap-3 transition-all hover:border-border ${c.glow}`}>
-            <div className="flex items-start justify-between">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
-                <div className={`size-9 rounded-xl ${c.ring} flex items-center justify-center`}>
-                    <span className={`material-symbols-outlined text-[18px] ${c.icon}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+        <div className={`rounded-2xl border border-border/60 bg-card p-3.5 sm:p-5 flex flex-col gap-2 sm:gap-3 transition-all hover:border-border ${c.glow}`}>
+            <div className="flex items-start justify-between gap-1.5">
+                <p className="text-[8px] xs:text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-muted-foreground truncate" title={title}>{title}</p>
+                <div className={`size-7 sm:size-9 rounded-lg sm:rounded-xl shrink-0 ${c.ring} flex items-center justify-center`}>
+                    <span className={`material-symbols-outlined text-[15px] sm:text-[18px] ${c.icon}`} style={{ fontVariationSettings: "'FILL' 1" }}>
                         {icon}
                     </span>
                 </div>
             </div>
             {loading ? (
-                <div className="h-8 w-20 rounded-lg bg-muted/50 animate-pulse" />
+                <div className="h-6 sm:h-8 w-16 sm:w-20 rounded-lg bg-muted/50 animate-pulse" />
             ) : (
-                <p className="text-3xl font-black tracking-tight text-foreground leading-none">{value}</p>
+                <p className="text-lg xs:text-xl sm:text-3xl font-black tracking-tight text-foreground leading-none truncate" title={String(value)}>{value}</p>
             )}
-            <p className="text-[11px] text-muted-foreground leading-none">{sub}</p>
+            <p className="text-[9px] xs:text-[10px] sm:text-xs text-muted-foreground leading-none truncate" title={sub}>{sub}</p>
         </div>
     )
 }

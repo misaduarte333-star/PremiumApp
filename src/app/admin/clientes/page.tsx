@@ -215,41 +215,53 @@ export default function ClientesPage() {
     return (
         <div className="relative min-h-full bg-background selection:bg-primary selection:text-primary-foreground">
             <div className="space-y-8 pb-10">
-                {/* Header Section */}
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                    <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                            <Users className="size-3.5 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">CRM & FIDELIZACIÓN</span>
+                {/* Header (Desktop Only) - Compact Elite Style */}
+                <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <Users className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
-                        <div className="space-y-1">
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase italic text-foreground">
-                                Gestión de <span className="text-primary">Clientes</span>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Gestión de <span className="text-gradient-gold italic">Clientes</span>
                             </h1>
-                            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest opacity-70">
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
                                 Base de datos centralizada y análisis de recurrencia
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="hidden lg:flex flex-col items-end px-6 border-r border-border/50">
-                            <span className="text-foreground font-black text-2xl tracking-tighter leading-none uppercase font-display">
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
                                 {formattedTime}
                             </span>
-                            <span className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-1">
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
                                 {formattedDate}
                             </span>
                         </div>
+
                         <Button 
                             onClick={openNewClientModal}
-                            className="bg-primary text-primary-foreground font-black uppercase tracking-tighter shadow-xl shadow-primary/20 h-14 px-8 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all group"
+                            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 h-11 px-6 rounded-xl transition-all"
                         >
-                            <UserPlus className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform" />
-                            Registrar Nuevo Cliente
+                            <UserPlus className="w-5 h-5 mr-2" />
+                            Nuevo Cliente
                         </Button>
                     </div>
                 </header>
+
+                {/* Mobile Action Button */}
+                <div className="flex lg:hidden justify-end mb-4">
+                    <Button 
+                        onClick={openNewClientModal}
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-11 shadow-md shadow-primary/10 rounded-xl transition-all"
+                    >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Nuevo Cliente
+                    </Button>
+                </div>
 
                 {/* KPI Metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -515,7 +527,7 @@ export default function ClientesPage() {
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        className="rounded-2xl h-14 px-8 text-muted-foreground hover:text-foreground font-black uppercase tracking-widest text-[10px] transition-all"
+                                        className="rounded-xl h-11 px-6 text-muted-foreground hover:text-foreground font-black uppercase tracking-widest text-[10px] transition-all"
                                         onClick={() => setShowEditModal(false)}
                                     >
                                         Cancelar
@@ -524,7 +536,7 @@ export default function ClientesPage() {
                                         type="button"
                                         disabled={isSaving}
                                         onClick={() => isNewClient ? handleSaveCliente() : setShowConfirmEditDialog(true)}
-                                        className="bg-primary text-primary-foreground rounded-2xl h-14 px-10 font-black uppercase tracking-[0.1em] text-[10px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group"
+                                        className="bg-primary hover:bg-primary/90 text-white rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 active:scale-95 transition-all group"
                                     >
                                         {isSaving ? 'Guardando...' : isNewClient ? (
                                             <>Crear Perfil <Plus className="size-4 ml-2" /></>
@@ -558,13 +570,13 @@ export default function ClientesPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-4 mt-8 pt-6 border-t border-border/50">
-                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-[10px] transition-all">
+                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-xl h-11 px-6 font-black uppercase tracking-widest text-[10px] transition-all">
                             Mejor no
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteCliente}
                             disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700 text-white border-none rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-600/20 transition-all hover:scale-[1.02] active:scale-95"
+                            className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-600/20 transition-all hover:scale-[1.02] active:scale-95"
                         >
                             {isDeleting ? (
                                 <Clock className="size-4 animate-spin" />
@@ -591,13 +603,13 @@ export default function ClientesPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-4 mt-8 pt-6 border-t border-border/50">
-                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-[10px] transition-all">
+                        <AlertDialogCancel className="bg-muted/50 border-border/50 text-foreground hover:bg-muted rounded-xl h-11 px-6 font-black uppercase tracking-widest text-[10px] transition-all">
                             Regresar a editar
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleSaveCliente}
                             disabled={isSaving}
-                            className="bg-primary text-primary-foreground border-none rounded-2xl h-14 px-10 font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                            className="bg-primary hover:bg-primary/90 text-white border-none rounded-xl h-11 px-8 font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 active:scale-95"
                         >
                             {isSaving ? (
                                 <Clock className="size-4 animate-spin" />

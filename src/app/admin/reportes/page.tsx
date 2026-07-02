@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
+import { useBusinessLabels } from '@/hooks/useBusinessLabels'
 import type { CitaDesdeVista } from '@/lib/types'
 import { 
     BarChart3, 
@@ -27,6 +28,7 @@ import { KPICard } from '@/components/KPICard'
 
 export default function ReportesPage() {
     const { sucursalId, loading: authLoading } = useAuth()
+    const { professional } = useBusinessLabels()
     const [loading, setLoading] = useState(true)
     const [dateRange, setDateRange] = useState({
         start: new Date().toISOString().split('T')[0],
@@ -200,11 +202,18 @@ export default function ReportesPage() {
             <div className="space-y-6 lg:space-y-8">
                 {/* Header (Desktop Only) - Compact Elite Style */}
                 <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border/50 mb-4 font-display">
-                    <div className="flex items-center gap-3 text-foreground">
-                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
-                            <BarChart3 className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <BarChart3 className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
-                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Métricas Estratégicas</h2>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Reportes <span className="text-gradient-gold italic">Estratégicos</span>
+                            </h1>
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
+                                Rendimiento, ticket promedio y métricas de ocupación
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -346,7 +355,7 @@ export default function ReportesPage() {
                             <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner">
                                 <Timer className="w-6 h-6" />
                             </div>
-                            Eficiencia Operativa por Barbero
+                            Eficiencia Operativa por {professional}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-10 pt-2">

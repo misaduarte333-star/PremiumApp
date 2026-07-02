@@ -22,10 +22,10 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-    title: 'Dashboard IA',
-    description: 'Sistema inteligente de gestión de citas para negocios de servicios',
-    keywords: ['negocio', 'citas', 'gestión', 'IA', 'WhatsApp'],
-    authors: [{ name: 'Enterprise' }],
+    title: 'SonorusApp',
+    description: 'Sistema inteligente de gestión de citas por SonorusApp',
+    keywords: ['negocio', 'citas', 'gestión', 'IA', 'WhatsApp', 'SonorusApp'],
+    authors: [{ name: 'SonorusApp' }],
     manifest: '/manifest.json',
 }
 

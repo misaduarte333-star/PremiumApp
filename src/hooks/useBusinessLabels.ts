@@ -25,7 +25,7 @@ const defaultLabels: BusinessLabels = {
     service: 'Servicio',
     services: 'Servicios',
     location: 'Estación',
-    businessName: 'Premium Service',
+    businessName: 'Sonorus Service',
     businessType: 'Barbería',
     loading: true
 }
@@ -58,7 +58,7 @@ export function useBusinessLabels() {
                     service: 'Servicio',
                     services: 'Servicios',
                     location: type === 'Barbero' ? 'Estación' : 'Mesa',
-                    businessName: sucursal.nombre || sucursalNombre || 'Premium Service',
+                    businessName: sucursal.nombre || sucursalNombre || 'Sonorus Service',
                     businessType: sucursal.tipo_prestador_label || 'Barbería',
                     loading: false,
                 })

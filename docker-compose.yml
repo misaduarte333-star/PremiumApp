@@ -4,14 +4,14 @@ services:
     image: premiumapp:latest
     container_name: premium-app
     restart: unless-stopped
-    ports:
-      - "3002:3002"
+    # ports no son necesarios — Traefik usa la red interna
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
+      - PORT=3006 # ← fuerza Next.js a usar 3006
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/api/health" ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3006/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

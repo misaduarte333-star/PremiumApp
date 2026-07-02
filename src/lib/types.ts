@@ -1,5 +1,5 @@
 // ============================================================================
-// PremiumApp - Type Definitions
+// SonorusApp - Type Definitions
 // ============================================================================
 
 // Schedule Types (used in JSONB columns)
@@ -65,6 +65,7 @@ export interface Profesional {
     id: string
     sucursal_id: string | null
     nombre: string
+    email?: string | null
     usuario_tablet: string
     password_hash: string | null
     horario_laboral: any // JSONB

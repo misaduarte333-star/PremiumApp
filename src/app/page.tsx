@@ -1,128 +1,251 @@
 'use client'
 
-import Link from 'next/link'
-import { Badge, ShieldCheck } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Shield, Mail, Lock, AlertCircle } from 'lucide-react'
 
 export default function Home() {
-    return (
-        <main className="fixed inset-0 flex flex-col overflow-hidden bg-black selection:bg-primary selection:text-black">
-            
-            {/* === LUXURY BACKGROUND === */}
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0a0806] via-[#0d0a07] to-black" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,rgba(212,175,55,0.12)_0%,transparent_60%)]" />
-                
-                {/* Art Deco geometric lines - Left */}
-                <svg className="absolute left-0 top-0 h-full w-32 md:w-48 opacity-[0.06]" viewBox="0 0 100 400" preserveAspectRatio="none">
-                    <line x1="20" y1="0" x2="20" y2="400" stroke="#D4AF37" strokeWidth="0.5"/>
-                    <line x1="35" y1="0" x2="35" y2="400" stroke="#D4AF37" strokeWidth="0.3"/>
-                    <line x1="50" y1="0" x2="50" y2="400" stroke="#D4AF37" strokeWidth="0.5"/>
-                </svg>
-                
-                {/* Art Deco geometric lines - Right */}
-                <svg className="absolute right-0 top-0 h-full w-32 md:w-48 opacity-[0.06]" viewBox="0 0 100 400" preserveAspectRatio="none">
-                    <line x1="80" y1="0" x2="80" y2="400" stroke="#D4AF37" strokeWidth="0.5"/>
-                    <line x1="65" y1="0" x2="65" y2="400" stroke="#D4AF37" strokeWidth="0.3"/>
-                    <line x1="50" y1="0" x2="50" y2="400" stroke="#D4AF37" strokeWidth="0.5"/>
-                </svg>
+    const router = useRouter()
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [focusedField, setFocusedField] = useState<string | null>(null)
+    const [checkingSession, setCheckingSession] = useState(true)
 
-                {/* Premium grain texture overlay */}
-                <div className="absolute inset-0 opacity-[0.015]" 
-                    style={{ 
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` 
-                    }} 
-                />
-            </div>
+    // Check for existing sessions on mount
+    useEffect(() => {
+        const adminSession = localStorage.getItem('admin_session')
+        const proSession = localStorage.getItem('profesional_session')
+
+        if (adminSession) {
+            try {
+                const parsed = JSON.parse(adminSession)
+                if (parsed?.id) {
+                    // Clear profesional session to avoid cross-contamination
+                    localStorage.removeItem('profesional_session')
+                    router.replace('/admin')
+                    return
+                }
+            } catch {
+                localStorage.removeItem('admin_session')
+            }
+        }
+
+        if (proSession) {
+            try {
+                const parsed = JSON.parse(proSession)
+                if (parsed?.id) {
+                    // Clear admin session to avoid cross-contamination
+                    localStorage.removeItem('admin_session')
+                    router.replace('/tablet')
+                    return
+                }
+            } catch {
+                localStorage.removeItem('profesional_session')
+            }
+        }
+
+        setCheckingSession(false)
+    }, [router])
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        if (loading) return
+
+        setLoading(true)
+        setError('')
+
+        try {
+            const res = await fetch('/api/auth/login-unified', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setError(data.error || 'Credenciales incorrectas')
+                return
+            }
+
+            if (data.success && data.user) {
+                if (data.role === 'admin') {
+                    // Clear any existing profesional session before saving admin session
+                    localStorage.removeItem('profesional_session')
+                    localStorage.setItem('admin_session', JSON.stringify(data.user))
+                    window.dispatchEvent(new Event('admin-session-changed'))
+                    router.replace('/admin')
+                } else if (data.role === 'profesional') {
+                    // Clear any existing admin session before saving profesional session
+                    localStorage.removeItem('admin_session')
+                    localStorage.setItem('profesional_session', JSON.stringify(data.user))
+                    router.replace('/tablet')
+                }
+            }
+        } catch (err) {
+            console.error('Unified login error:', err)
+            setError('Error de conexión con el servidor')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (checkingSession) {
+        return (
+            <main className="fixed inset-0 flex flex-col justify-center items-center bg-black">
+                <div className="relative w-16 h-16 flex items-center justify-center rounded-full border-2 border-primary/20">
+                    <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin" />
+                    <Shield className="w-8 h-8 text-primary animate-pulse" />
+                </div>
+                <p className="text-[10px] tracking-[0.3em] text-primary/60 font-bold uppercase mt-4">
+                    Cargando Portal...
+                </p>
+            </main>
+        )
+    }
+
+    return (
+        <main className="fixed inset-0 flex flex-col overflow-hidden bg-[#070412] selection:bg-primary selection:text-white">
+            
+            {/* === SIMPLE SOLID BACKGROUND === */}
+            <div className="absolute inset-0 z-0 pointer-events-none bg-[#070412]" />
 
             {/* === MAIN CONTENT === */}
             <div className="relative z-10 flex-1 flex flex-col justify-center items-center px-6 py-8 animate-fade-in">
                 
                 {/* Logo & Title Section */}
-                <header className="flex flex-col items-center mb-12 text-center">
-                    <div className="relative w-20 h-20 flex items-center justify-center mb-8">
+                <header className="flex flex-col items-center mb-8 text-center">
+                    <div className="relative w-24 h-24 flex items-center justify-center mb-4">
                         <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary to-transparent opacity-20 blur-2xl scale-150" />
-                        <div className="absolute inset-0 rounded-full border-2 border-primary/50" />
-                        <div className="flex items-center justify-center w-full h-full text-primary text-3xl font-display font-bold">
-                            P
-                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                            src="/sonorus-logo.png" 
+                            alt="SonorusApp Logo" 
+                            className="w-20 h-20 object-contain filter brightness-100 relative z-10"
+                        />
                     </div>
 
-                    <h1 className="font-display font-black leading-[0.85] mb-6"
-                        style={{ fontSize: 'clamp(2.5rem, 10vw, 4.5rem)' }}>
-                        <span className="block text-white tracking-tight uppercase">Premium</span>
-                        <span className="block gradient-text-gold tracking-tighter uppercase">Platform</span>
+                    <h1 className="font-display font-black leading-[0.85] mb-4 text-4xl md:text-5xl">
+                        <span className="block text-white tracking-tight uppercase">Sonorus</span>
+                        <span className="block text-primary tracking-tighter uppercase">App</span>
                     </h1>
 
-                    <div className="flex items-center gap-5">
-                        <div className="h-px w-10 bg-gradient-to-r from-transparent to-primary/30" />
-                        <p className="text-[10px] tracking-[0.6em] text-primary/60 font-bold uppercase">
-                            Admin & Pro Portal
+                    <div className="flex items-center gap-4">
+                        <div className="h-px w-8 bg-gradient-to-r from-transparent to-primary/30" />
+                        <p className="text-[9px] tracking-[0.5em] text-primary/60 font-bold uppercase">
+                            Portal Unificado
                         </p>
-                        <div className="h-px w-10 bg-gradient-to-l from-transparent to-primary/30" />
+                        <div className="h-px w-8 bg-gradient-to-l from-transparent to-primary/30" />
                     </div>
                 </header>
 
-                {/* Portal Selection */}
-                <nav className="w-full max-w-sm flex flex-col gap-5">
-                    
-                    <Link
-                        href="/tablet/login"
-                        className="group relative p-6 rounded-2xl overflow-hidden transition-all duration-500 hover:translate-y-[-2px]"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(153,101,21,0.06) 100%)',
-                            border: '1px solid rgba(212,175,55,0.2)',
-                            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
-                        }}
-                    >
-                        {/* Hover glow effects */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                {/* Login Form */}
+                <section className="w-full max-w-sm glass-card p-6 border-white/10 shadow-2xl relative">
+                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
                         
-                        <div className="relative flex items-center gap-6">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 group-hover:border-primary/60 transition-colors">
-                                <Badge className="text-primary w-8 h-8" strokeWidth={1.5} />
-                            </div>
-                            
-                            <div className="flex-1">
-                                <p className="text-white font-bold text-lg tracking-wider uppercase leading-none mb-1.5 group-hover:text-primary transition-colors">Profesionales</p>
-                                <p className="text-primary/40 text-xs font-semibold tracking-widest uppercase">Estación de Trabajo</p>
-                            </div>
-                            <div className="text-primary/30 group-hover:text-primary group-hover:translate-x-1 transition-all">
-                                →
+                        {/* Email or Username Field */}
+                        <div className="flex flex-col gap-1.5">
+                            <label 
+                                htmlFor="email" 
+                                className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-200 ${
+                                    focusedField === 'email' ? 'text-primary' : 'text-white/50'
+                                }`}
+                            >
+                                Correo Electrónico o Usuario
+                            </label>
+                            <div className={`relative flex items-center gap-2 rounded-lg transition-all duration-300 ${
+                                focusedField === 'email' 
+                                    ? 'bg-black/80 ring-2 ring-primary/60 shadow-lg shadow-primary/10' 
+                                    : 'bg-black/50 ring-1 ring-white/10 hover:ring-white/20'
+                            }`}>
+                                <Mail className={`w-4 h-4 ml-3 transition-colors duration-200 ${
+                                    focusedField === 'email' ? 'text-primary' : 'text-white/30'
+                                }`} />
+                                <input
+                                    id="email"
+                                    type="text"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    onFocus={() => setFocusedField('email')}
+                                    onBlur={() => setFocusedField(null)}
+                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-white placeholder:text-white/25 font-medium text-sm focus:ring-0"
+                                    placeholder="usuario@negocio.com o tu usuario"
+                                    autoComplete="username"
+                                    required
+                                    style={{ fontFamily: 'var(--font-sans), sans-serif' }}
+                                />
                             </div>
                         </div>
-                    </Link>
 
-                    <Link
-                        href="/admin/login"
-                        className="group relative p-6 rounded-2xl overflow-hidden transition-all duration-500 hover:translate-y-[-2px]"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)'
-                        }}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                        
-                        <div className="relative flex items-center gap-6">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 group-hover:border-white/30 transition-colors">
-                                <ShieldCheck className="text-white w-8 h-8 opacity-60 group-hover:opacity-100" strokeWidth={1.5} />
-                            </div>
-                            
-                            <div className="flex-1">
-                                <p className="text-white font-bold text-lg tracking-wider uppercase leading-none mb-1.5">Administración</p>
-                                <p className="text-white/30 text-xs font-semibold tracking-widest uppercase">Gestión y Control</p>
-                            </div>
-                            <div className="text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all">
-                                →
+                        {/* Password Field */}
+                        <div className="flex flex-col gap-1.5">
+                            <label 
+                                htmlFor="password" 
+                                className={`text-[10px] font-bold uppercase tracking-wider transition-colors duration-200 ${
+                                    focusedField === 'password' ? 'text-primary' : 'text-white/50'
+                                }`}
+                            >
+                                Contraseña
+                            </label>
+                            <div className={`relative flex items-center gap-2 rounded-lg transition-all duration-300 ${
+                                focusedField === 'password' 
+                                    ? 'bg-black/80 ring-2 ring-primary/60 shadow-lg shadow-primary/10' 
+                                    : 'bg-black/50 ring-1 ring-white/10 hover:ring-white/20'
+                            }`}>
+                                <Lock className={`w-4 h-4 ml-3 transition-colors duration-200 ${
+                                    focusedField === 'password' ? 'text-primary' : 'text-white/30'
+                                }`} />
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onFocus={() => setFocusedField('password')}
+                                    onBlur={() => setFocusedField(null)}
+                                    className="flex-1 bg-transparent border-none outline-none py-3 pr-3 text-white placeholder:text-white/25 font-medium text-sm focus:ring-0"
+                                    placeholder="Ingresa tu contraseña"
+                                    autoComplete="current-password"
+                                    required
+                                    style={{ fontFamily: 'var(--font-sans), sans-serif' }}
+                                />
                             </div>
                         </div>
-                    </Link>
-                </nav>
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg animate-slide-in">
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                                <span className="text-xs font-medium text-red-400">{error}</span>
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="relative w-full py-3.5 mt-2 rounded-lg font-bold text-sm uppercase tracking-wider overflow-hidden transition-all duration-300 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group bg-primary hover:bg-primary-dark text-white hover:shadow-md hover:shadow-primary/20"
+                        >
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <span>Iniciar Sesión</span>
+                                    </>
+                                )}
+                            </span>
+                        </button>
+                    </form>
+                </section>
             </div>
 
-            <footer className="relative z-10 pb-10 flex flex-col items-center gap-2">
-                <p className="text-[9px] tracking-[0.7em] text-white/20 font-bold uppercase text-center max-w-xs leading-relaxed">
-                    Generic Service Ecosystem<br/>Authorized Access Only
+            <footer className="relative z-10 pb-6 flex flex-col items-center gap-2">
+                <p className="text-[8px] tracking-[0.5em] text-white/30 font-bold uppercase text-center max-w-xs leading-relaxed">
+                    SonorusApp<br/>Todos los derechos reservados &copy; {new Date().getFullYear()}
                 </p>
             </footer>
         </main>

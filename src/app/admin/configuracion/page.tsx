@@ -159,32 +159,35 @@ export default function ConfiguracionPage() {
             <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
                 {/* Header (Desktop Only) - Compact Elite Style */}
                 <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
-                    <div className="flex items-center gap-3 text-foreground">
-                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
-                            <Settings className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <Settings className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
-                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Ajustes del Sistema</h2>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Ajustes del <span className="text-gradient-gold italic">Sistema</span>
+                            </h1>
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
+                                Configuración de sucursal, horarios de atención y variables globales
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Time & Date - Premium Compact Style */}
-                        <div className="bg-muted/90 backdrop-blur-xl border border-border rounded-xl px-4 py-1.5 flex items-center gap-4 shadow-2xl hover:border-primary/30 transition-all group">
-                            <div className="flex flex-col items-end text-foreground text-right">
-                                <p className="text-xs font-black tracking-tighter tabular-nums leading-tight">
-                                    {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                </p>
-                                <p className="text-[9px] text-primary font-black uppercase tracking-[0.1em] leading-tight">
-                                    {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
-                                </p>
-                            </div>
-                            <div className="h-6 w-[1px] bg-border group-hover:bg-primary/20 transition-colors" />
-                            <Clock className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="flex items-center gap-3">
+                        {/* Live Clock & Date */}
+                        <div className="hidden lg:flex flex-col items-end mr-4">
+                            <span className="text-foreground font-black text-xl tracking-tighter leading-none uppercase">
+                                {currentTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                            </span>
+                            <span className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
+                                {currentTime.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, (c) => c.toUpperCase())}
+                            </span>
                         </div>
 
                         <Button 
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-black uppercase tracking-tighter shadow-lg shadow-gold/20 h-10 px-6 rounded-xl"
+                            className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 h-11 px-6 rounded-xl transition-all"
                         >
                             <Save className={cn("w-4 h-4 mr-2", saving && "animate-spin")} />
                             {saving ? 'Guardando...' : 'Guardar Cambios'}
@@ -204,9 +207,10 @@ export default function ConfiguracionPage() {
                         onClick={handleSave}
                         disabled={saving}
                         size="sm"
-                        className="bg-primary text-black font-black uppercase tracking-tighter h-8 rounded-lg text-[10px]"
+                        className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] h-8 px-3 rounded-lg shadow-md shadow-primary/10 transition-all"
                     >
-                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                        {saving ? 'Guardando...' : 'Guardar'}
                     </Button>
                 </div>
 
@@ -218,7 +222,7 @@ export default function ConfiguracionPage() {
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="p-6 lg:p-8 space-y-8">
                                 <div className="flex items-center gap-4 border-b border-border pb-6">
-                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(124,58,237,0.15)]">
                                         <Building2 className="text-primary w-5 h-5" />
                                     </div>
                                     <div>
@@ -292,7 +296,7 @@ export default function ConfiguracionPage() {
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="p-6 lg:p-8 space-y-8">
                                 <div className="flex items-center gap-4 border-b border-border pb-6">
-                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(124,58,237,0.15)]">
                                         <Calendar className="text-primary w-5 h-5" />
                                     </div>
                                     <div>

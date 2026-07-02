@@ -35,7 +35,9 @@ import {
     TrendingDown,
     MoreVertical,
     User,
-    Shield
+    Shield,
+    Clock,
+    RefreshCw
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { CitaCard } from '@/components/CitaCard'
@@ -43,6 +45,7 @@ import { AgendaTimeline } from '@/components/AgendaTimeline'
 import { FinanzasProfesional } from '@/components/FinanzasProfesional'
 import type { CitaDesdeVista, Barbero as Profesional } from '@/lib/types'
 import { useBusinessLabels } from '@/hooks/useBusinessLabels'
+import { toast } from 'sonner'
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -148,7 +151,9 @@ export default function TabletDashboard() {
     const [showSettings, setShowSettings] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [showMoreActions, setShowMoreActions] = useState(false)
-    const [seccion, setSeccion] = useState<'agenda' | 'finanzas'>('agenda')
+    const [seccion, setSeccion] = useState<'agenda'>('agenda')
+
+
 
     // Agenda states
     const [vistaAgenda, setVistaAgenda] = useState<'hoy' | 'semana' | 'mes' | 'dia'>('hoy')
@@ -293,12 +298,27 @@ export default function TabletDashboard() {
         const syncSessionAndData = async () => {
 
             // 1. Initial hydration (browser only)
+            // Clear any conflicting admin session that might have bled into /tablet
+            const adminSession = typeof window !== 'undefined' ? localStorage.getItem('admin_session') : null
+            if (adminSession) {
+                // User came from admin — don't use admin session on tablet page, redirect to login
+                console.warn('⚠️ Admin session detected on tablet page, redirecting to login')
+                setIsCheckingAuth(false)
+                router.replace('/')
+                return
+            }
+
             const sessionStr = typeof window !== 'undefined' ? localStorage.getItem('profesional_session') : null
             let currentProfesional: Profesional | null = null
 
             if (sessionStr) {
                 try {
                     currentProfesional = JSON.parse(sessionStr)
+                    // Strip nested join data (sucursales object) that could corrupt ID checks
+                    if (currentProfesional && (currentProfesional as any).sucursales) {
+                        const { sucursales: _s, ...cleanProf } = currentProfesional as any
+                        currentProfesional = cleanProf
+                    }
                     setProfesional(currentProfesional)
                 } catch (e) {
                     console.error('❌ Failed to parse session:', e)
@@ -324,33 +344,36 @@ export default function TabletDashboard() {
             if (!currentProfesional?.id) {
                 console.warn(`⚠️ No ${labels.professional} ID found after hydration. Expelling...`)
                 setIsCheckingAuth(false) // Unblock render before redirecting
-                router.replace('/tablet/login')
+                router.replace('/')
                 return
             }
 
             // 3. SWR: Validate against Supabase
             try {
                 const bId = currentProfesional.id
+                // Use maybeSingle() instead of single() to avoid "Cannot coerce to JSON object" error
+                // when the row doesn't exist (returns null instead of throwing)
                 const { data, error } = await (supabase
                     .from('barberos')
-                    .select('*')
+                    .select('id, nombre, activo, sucursal_id, estacion_id, horario_laboral, bloqueo_almuerzo, usuario_tablet, comision_porcentaje, meta_cortes_mensual, email, created_at')
                     .eq('id', bId)
-                    .single() as any)
+                    .maybeSingle() as any)
 
-                if (error || !data) {
-                    console.error('❌ Session validation failed:', error?.message || 'Not found')
-                    // If it's a real 406 (Not Found), expel. Network errors are handled more gracefully.
+                if (error) {
+                    console.error('❌ Session validation failed:', error?.message || 'Unknown error')
+                    // Only hard-expel on definitive not-found; ignore transient network errors
                     if (error?.code === 'PGRST116') {
-                        localStorage.removeItem('barbero_session')
-                        router.replace('/tablet/login')
+                        localStorage.removeItem('profesional_session')
+                        router.replace('/')
                         return
                     }
+                    // For other errors (network, RLS timeout) — keep local session, continue
                 }
 
                 if (data && !data.activo) {
                     console.warn(`🚫 ${labels.professional} account is inactive. Expelling...`)
                     localStorage.removeItem('profesional_session')
-                    router.replace('/tablet/login')
+                    router.replace('/')
                     return
                 }
 
@@ -370,10 +393,10 @@ export default function TabletDashboard() {
                 // SUCCESS: Only now we allow the dashboard to show
 
                 // Fetch sucursal and other data in parallel
-                if (currentProfesional.sucursal_id || (data && (data as any).sucursal_id)) {
-                    const sId = ((data as any)?.sucursal_id || currentProfesional.sucursal_id) as string
+                const sucursalId = (data as any)?.sucursal_id || (currentProfesional as any).sucursal_id
+                if (sucursalId) {
                     const [sucursalRes, serviciosRes, profesionalesRes] = await Promise.all([
-                        supabase.from('sucursales').select('*').eq('id', sId).single() as any,
+                        (supabase.from('sucursales').select('*').eq('id', sucursalId).maybeSingle() as any),
                         supabase.from('servicios').select('*').eq('activo', true),
                         supabase.from('barberos').select('*').eq('activo', true),
                     ])
@@ -441,6 +464,8 @@ export default function TabletDashboard() {
             fetchStatic()
         }
     }, [profesional?.id, checkPastPending, supabase])
+
+
 
     const cargarAgenda = useCallback(async (isInitialLoad = false) => {
         if (!profesional?.id) return
@@ -675,8 +700,7 @@ export default function TabletDashboard() {
                 </motion.div>
             )}
 
-            {seccion === 'agenda' && (
-            <header className="bg-background/80 backdrop-blur-xl border-b border-border px-4 md:px-8 py-3 md:py-5 shrink-0 z-50 relative shadow-xl">
+            <header className="bg-background border-b border-border px-4 md:px-8 py-3 md:py-5 shrink-0 z-50 relative shadow-xl">
 
                 <div className="flex items-start justify-between max-w-[1920px] mx-auto gap-3">
 
@@ -690,8 +714,8 @@ export default function TabletDashboard() {
 
                         <div className="flex flex-col gap-2 md:gap-3 animate-slide-in">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-3">
-                                <h1 className="text-base md:text-2xl font-black text-foreground tracking-tight uppercase font-display truncate max-w-[60px] sm:max-w-[150px] md:max-w-none leading-none">
-                                    {profesional?.nombre.split(' ')[0] || labels.professional}
+                                <h1 className="text-base md:text-2xl font-black text-foreground tracking-tight uppercase font-display truncate max-w-[180px] xs:max-w-[240px] sm:max-w-[300px] md:max-w-none leading-none" title={profesional?.nombre}>
+                                    {profesional?.nombre || labels.professional}
                                 </h1>
                                 <div className="h-1 w-8 bg-primary/20 rounded-full hidden md:block" />
                             </div>
@@ -739,7 +763,11 @@ export default function TabletDashboard() {
                             <p className="text-sm md:text-base font-black text-foreground tabular-nums tracking-tighter font-display leading-none">
                                 {currentTime ? currentTime.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase() : '--:--'}
                             </p>
-                            <p className="text-[6px] md:text-[7px] text-foreground/20 font-black uppercase tracking-[0.3em] mt-1">{labels.location} #{profesional?.estacion_id || '0'}</p>
+                            <div className="flex items-center justify-end gap-1.5 mt-1">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src="/sonorus-logo.png" className="w-3 h-3 object-contain opacity-40" alt="SonorusApp" />
+                                <p className="text-[6px] md:text-[7px] text-foreground/30 font-black uppercase tracking-[0.3em]">{labels.location} #{profesional?.estacion_id || '0'}</p>
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 md:gap-2 pl-2 md:pl-4 border-l border-border relative">
@@ -778,7 +806,7 @@ export default function TabletDashboard() {
                             <Button
                                 size="icon"
                                 onClick={() => setIsNewCitaModalOpen(true)}
-                                className="w-9 h-9 md:w-10 md:h-10 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 shadow-none shrink-0"
+                                className="w-9 h-9 md:w-10 md:h-10 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 shadow-none shrink-0 hidden sm:inline-flex"
                                 title={`Nueva ${labels.appointment}`}
                             >
                                 <Plus className="w-4 h-4 md:w-5 md:h-5" />
@@ -789,35 +817,25 @@ export default function TabletDashboard() {
                                 title="Métricas"
                                 className={cn(
                                     buttonVariants({ variant: "outline", size: "icon" }),
-                                    "w-9 h-9 md:w-10 md:h-10 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 shadow-none p-0 flex items-center justify-center shrink-0"
+                                    "w-9 h-9 md:w-10 md:h-10 bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 shadow-none p-0 flex items-center justify-center shrink-0 hidden sm:inline-flex"
                                 )}
                             >
                                 <BarChart3 className="w-4 h-4 md:w-5 md:h-5" />
                             </Link>
 
-                            <Button
-                                size="icon"
-                                onClick={() => setSeccion(seccion === 'agenda' ? 'finanzas' : 'agenda')}
-                                className={cn(
-                                    "w-9 h-9 md:w-10 md:h-10 transition-all shadow-none shrink-0",
-                                    seccion === 'agenda' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20" : "bg-primary text-black scale-110"
-                                )}
-                                title="Mis Finanzas"
-                            >
-                                <DollarSign className="w-4 h-4 md:w-5 md:h-5" />
-                            </Button>
+
 
                             <Button
                                 size="icon"
                                 onClick={() => setShowLogoutConfirm(true)}
-                                className="w-9 h-9 md:w-10 md:h-10 bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20 shadow-none shrink-0"
+                                className="w-9 h-9 md:w-10 md:h-10 bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20 shadow-none shrink-0 hidden sm:inline-flex"
                                 title="Cerrar Sesión"
                             >
                                 <LogOut className="w-4 h-4 md:w-5 md:h-5" />
                             </Button>
 
-                            {/* Mobile More Actions Toggle */}
-                            <div className="md:hidden relative">
+                            {/* Mobile More Actions Toggle (Hidden on mobile since we have bottom tab bar navigation) */}
+                            <div className="hidden relative">
                                 <Button
                                     size="icon"
                                     variant="ghost"
@@ -893,7 +911,8 @@ export default function TabletDashboard() {
                     </div>
                 </div>
             </header>
-            )}
+
+
 
             <main className="flex-1 overflow-hidden p-0 lg:p-3 xl:p-4 relative z-10 flex flex-col">
                 {seccion === 'agenda' && (
@@ -1142,16 +1161,7 @@ export default function TabletDashboard() {
                     </div>
                 )}
                 
-                {seccion === 'finanzas' && profesional && (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-smooth bg-background">
-                        <div className="max-w-7xl mx-auto">
-                            <FinanzasProfesional 
-                                profesional={profesional} 
-                                onBack={() => setSeccion('agenda')}
-                            />
-                        </div>
-                    </div>
-                )}
+
             </main>
 
             {checkoutCita && (
@@ -1210,6 +1220,19 @@ export default function TabletDashboard() {
                                     </div>
                                 </div>
                             </div>
+                            <div className="sm:hidden">
+                                <p className="text-[9px] font-black text-foreground/20 uppercase tracking-[0.3em] mb-4">Cuenta</p>
+                                <Button
+                                    onClick={() => {
+                                        setShowSettings(false);
+                                        setShowLogoutConfirm(true);
+                                    }}
+                                    className="w-full h-12 bg-red-500/10 text-red-500 rounded-2xl font-black uppercase tracking-widest text-[9px] border border-red-500/20 hover:bg-red-500/20 flex items-center justify-center gap-2"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Cerrar Sesión
+                                </Button>
+                            </div>
                         </div>
                         <DialogFooter className="mt-8">
                             <Button
@@ -1244,8 +1267,8 @@ export default function TabletDashboard() {
                             >
                                 Cancelar
                             </Button>
-                            <Button
-                                onClick={() => { localStorage.removeItem('profesional_session'); router.replace('/tablet/login'); }}
+                             <Button
+                                onClick={() => { localStorage.removeItem('profesional_session'); router.replace('/'); }}
                                 className="flex-[2] h-12 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] shadow-[0_4px_12px_rgba(239,68,68,0.3)] flex items-center justify-center gap-2"
                             >
                                 <LogOut className="w-4 h-4" />
@@ -1255,6 +1278,116 @@ export default function TabletDashboard() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Barra de navegación inferior para dispositivos móviles */}
+            <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-background/95 border-t border-border/60 py-2 px-4 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur-xl">
+                <div className="flex items-center justify-between w-full max-w-md mx-auto relative">
+                    {/* Grupo Izquierdo (Agenda y Métricas) */}
+                    <div className="flex items-center justify-around flex-1">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setSeccion('agenda')}
+                            className={cn(
+                                "flex flex-col items-center justify-center gap-0.5 h-11 w-14 text-muted-foreground hover:bg-transparent hover:text-foreground relative p-0 transition-all",
+                                seccion === 'agenda' && "text-primary hover:text-primary"
+                            )}
+                        >
+                            <CalendarIcon className={cn("w-4 h-4 transition-transform duration-300", seccion === 'agenda' && "scale-110")} />
+                            <span className="text-[7px] font-black uppercase tracking-wider">Agenda</span>
+                            {seccion === 'agenda' && <div className="absolute bottom-0 w-3 h-0.5 bg-primary rounded-full animate-pulse-glow" />}
+                        </Button>
+
+                        <Link
+                            href="/tablet/reportes"
+                            className={cn(
+                                buttonVariants({ variant: "ghost" }),
+                                "flex flex-col items-center justify-center gap-0.5 h-11 w-14 text-muted-foreground hover:bg-transparent hover:text-foreground p-0 relative transition-all"
+                            )}
+                        >
+                            <BarChart3 className="w-4 h-4 text-primary" />
+                            <span className="text-[7px] font-black uppercase tracking-wider">Métricas</span>
+                        </Link>
+                    </div>
+
+                    {/* Botón flotante central para Nueva Cita */}
+                    <div className="flex justify-center px-4 shrink-0">
+                        <Button
+                            onClick={() => setIsNewCitaModalOpen(true)}
+                            className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center shadow-lg -mt-6 border-4 border-background shrink-0 active:scale-95 transition-transform"
+                        >
+                            <Plus className="w-5 h-5" />
+                        </Button>
+                    </div>
+
+                    {/* Grupo Derecho (Galería y Menú Más) */}
+                    <div className="flex items-center justify-around flex-1">
+                        <Link
+                            href="/tablet/galeria"
+                            className={cn(
+                                buttonVariants({ variant: "ghost" }),
+                                "flex flex-col items-center justify-center gap-0.5 h-11 w-14 text-muted-foreground hover:bg-transparent hover:text-foreground p-0 relative transition-all"
+                            )}
+                        >
+                            <ImageIcon className="w-4 h-4" />
+                            <span className="text-[7px] font-black uppercase tracking-wider">Galería</span>
+                        </Link>
+
+                        {/* Menú Más */}
+                        <div className="relative flex justify-center">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowMoreActions(!showMoreActions)}
+                                className={cn(
+                                    "flex flex-col items-center justify-center gap-0.5 h-11 w-14 text-muted-foreground hover:bg-transparent hover:text-foreground p-0 transition-all",
+                                    showMoreActions && "text-primary hover:text-primary"
+                                )}
+                            >
+                                <MoreVertical className={cn("w-4 h-4 transition-transform duration-300", showMoreActions && "rotate-90 text-primary")} />
+                                <span className="text-[7px] font-black uppercase tracking-wider">Más</span>
+                            </Button>
+
+                            <AnimatePresence>
+                                {showMoreActions && (
+                                    <>
+                                        <motion.div 
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            onClick={() => setShowMoreActions(false)}
+                                            className="fixed inset-0 z-40 bg-black/5"
+                                        />
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                                            transition={{ duration: 0.15, ease: "easeOut" }}
+                                            className="absolute bottom-full right-0 mb-3 w-36 bg-popover border border-border/80 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 overflow-hidden"
+                                        >
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => { setShowSettings(true); setShowMoreActions(false); }}
+                                                className="w-full justify-start gap-2.5 h-9 text-foreground/75 hover:text-foreground hover:bg-foreground/5 rounded-xl px-3 text-[9px] font-black uppercase tracking-wider"
+                                            >
+                                                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                                                <span>Ajustes</span>
+                                            </Button>
+                                            <div className="h-px bg-border/60 my-1" />
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => { setShowLogoutConfirm(true); setShowMoreActions(false); }}
+                                                className="w-full justify-start gap-2.5 h-9 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-xl px-3 text-[9px] font-black uppercase tracking-wider"
+                                            >
+                                                <LogOut className="w-3.5 h-3.5" />
+                                                <span>Salir</span>
+                                            </Button>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+                </div>
+            </nav>
         </div>
     )
 }

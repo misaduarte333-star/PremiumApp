@@ -89,6 +89,9 @@ export default function FinanzasPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingGasto, setEditingGasto] = useState<Gasto | null>(null)
     const [currentTime, setCurrentTime] = useState(new Date())
+
+    // Main tab
+    const [activeFinanzasTab, setActiveFinanzasTab] = useState<'gastos' | 'cierre_caja'>('gastos')
     
     // Form state
     const [descripcion, setDescripcion] = useState('')
@@ -119,6 +122,16 @@ export default function FinanzasPage() {
         netProfit: 0,
         barberContributions: [] as { id: string, nombre: string, generado: number }[]
     })
+
+    // ── Cierre de Caja state ──────────────────────────────────────
+    const [cierreCajaHoy, setCierreCajaHoy] = useState<any>(null)
+    const [loadingCierre, setLoadingCierre] = useState(false)
+    const [savingCierre, setSavingCierre] = useState(false)
+    const [montoApertura, setMontoApertura] = useState('')
+    const [montoContado, setMontoContado] = useState('')
+    const [observacionesCierre, setObservacionesCierre] = useState('')
+    const [ventasHoy, setVentasHoy] = useState({ efectivo: 0, tarjeta: 0, transferencia: 0 })
+    const [gastosEfectivoHoy, setGastosEfectivoHoy] = useState(0)
 
     const supabase = createClient()
 
@@ -211,10 +224,141 @@ export default function FinanzasPage() {
         }
     }
 
+    const fetchCierreCajaHoy = useCallback(async () => {
+        if (!sucursalId) return
+        setLoadingCierre(true)
+        try {
+            const todayStr = new Date().toLocaleDateString('en-CA')
+
+            // 1. Get or initialize today's cash register record
+            const { data: cierre } = await (supabase as any)
+                .from('cierres_caja')
+                .select('*')
+                .eq('sucursal_id', sucursalId)
+                .eq('fecha', todayStr)
+                .maybeSingle()
+
+            setCierreCajaHoy(cierre || null)
+            if (cierre?.monto_apertura) setMontoApertura(String(cierre.monto_apertura))
+
+            // 2. Sum today's finalized appointments by payment method
+            const { data: citasHoy } = await supabase
+                .from('vista_citas_app')
+                .select('monto_pagado, metodo_pago, servicio_precio')
+                .eq('sucursal_id', sucursalId)
+                .eq('estado', 'finalizada')
+                .eq('fecha_cita_local', todayStr)
+
+            const ventas = { efectivo: 0, tarjeta: 0, transferencia: 0 }
+            ;(citasHoy || []).forEach((c: any) => {
+                const mnt = c.monto_pagado ?? c.servicio_precio ?? 0
+                if (c.metodo_pago === 'efectivo') ventas.efectivo += mnt
+                else if (c.metodo_pago === 'tarjeta') ventas.tarjeta += mnt
+                else if (c.metodo_pago === 'transferencia') ventas.transferencia += mnt
+                else ventas.efectivo += mnt // default to cash if unknown
+            })
+            setVentasHoy(ventas)
+
+            // 3. Sum today's paid cash expenses
+            const { data: gastosHoy } = await supabase
+                .from('gastos')
+                .select('monto')
+                .is('barbero_id', null)
+                .eq('sucursal_id', sucursalId)
+                .eq('pagado', true)
+                .eq('metodo_pago', 'efectivo')
+                .eq('fecha_pago', todayStr)
+
+            const totalGastos = (gastosHoy || []).reduce((s: number, g: any) => s + (g.monto || 0), 0)
+            setGastosEfectivoHoy(totalGastos)
+
+        } catch (err) {
+            console.error('Error fetching cierre de caja:', err)
+        } finally {
+            setLoadingCierre(false)
+        }
+    }, [supabase, sucursalId])
+
+    const handleAbrirCaja = async () => {
+        if (!montoApertura || !sucursalId) return
+        setSavingCierre(true)
+        try {
+            const todayStr = new Date().toLocaleDateString('en-CA')
+            const { error } = await (supabase as any)
+                .from('cierres_caja')
+                .upsert([{
+                    sucursal_id: sucursalId,
+                    fecha: todayStr,
+                    monto_apertura: parseFloat(montoApertura),
+                    estado: 'abierta'
+                }], { onConflict: 'sucursal_id,fecha' })
+            if (error) throw error
+            toast.success('Caja abierta correctamente')
+            fetchCierreCajaHoy()
+        } catch (err: any) {
+            toast.error('Error al abrir caja: ' + err.message)
+        } finally {
+            setSavingCierre(false)
+        }
+    }
+
+    const handleCerrarCaja = async () => {
+        if (!montoContado || !sucursalId) {
+            toast.error('Ingresa el monto contado en caja')
+            return
+        }
+        setSavingCierre(true)
+        try {
+            const todayStr = new Date().toLocaleDateString('en-CA')
+            const apertura = parseFloat(montoApertura || '0')
+            const esperado = apertura + ventasHoy.efectivo - gastosEfectivoHoy
+            const real = parseFloat(montoContado)
+            const diferencia = real - esperado
+
+            const { error } = await (supabase as any)
+                .from('cierres_caja')
+                .upsert([{
+                    sucursal_id: sucursalId,
+                    fecha: todayStr,
+                    monto_apertura: apertura,
+                    monto_ventas_efectivo: ventasHoy.efectivo,
+                    monto_ventas_tarjeta: ventasHoy.tarjeta,
+                    monto_ventas_transferencia: ventasHoy.transferencia,
+                    monto_gastos: gastosEfectivoHoy,
+                    monto_cierre_esperado: esperado,
+                    monto_cierre_real: real,
+                    diferencia,
+                    estado: 'cerrada',
+                    observaciones: observacionesCierre || (diferencia !== 0 ? `Discrepancia de $${Math.abs(diferencia).toFixed(2)} ${diferencia > 0 ? '(sobrante)' : '(faltante)'}` : 'Sin diferencias')
+                }], { onConflict: 'sucursal_id,fecha' })
+
+            if (error) throw error
+            toast.success('¡Cierre de caja registrado exitosamente!')
+            setMontoContado('')
+            fetchCierreCajaHoy()
+        } catch (err: any) {
+            toast.error('Error al cerrar caja: ' + err.message)
+            // Demo fallback
+            const apertura = parseFloat(montoApertura || '0')
+            const esperado = apertura + ventasHoy.efectivo - gastosEfectivoHoy
+            const real = parseFloat(montoContado)
+            setCierreCajaHoy({
+                estado: 'cerrada',
+                monto_apertura: apertura,
+                monto_cierre_esperado: esperado,
+                monto_cierre_real: real,
+                diferencia: real - esperado
+            })
+        } finally {
+            setSavingCierre(false)
+        }
+    }
+
     useEffect(() => {
         if (authLoading || !sucursalId) return
         fetchGastos()
         fetchBusinessMetrics()
+        fetchCierreCajaHoy()
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
     }, [authLoading, sucursalId])
@@ -456,16 +600,25 @@ export default function FinanzasPage() {
         }
     }, [gastos])
 
+    const expectedCash = parseFloat(montoApertura || '0') + ventasHoy.efectivo - gastosEfectivoHoy
+
     return (
         <div className="relative min-h-full bg-background selection:bg-primary selection:text-black">
             <div className="space-y-6 lg:space-y-8 selection:bg-primary selection:text-black">
                 {/* Header (Desktop Only) - Compact Elite Style */}
                 <header className="hidden lg:flex h-16 px-0 items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20 border-b border-border mb-4 font-display">
-                    <div className="flex items-center gap-3 text-foreground">
-                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 transition-all hover:scale-105">
-                            <TrendingUp className="text-primary w-4 h-4 shadow-lg shadow-primary/20" />
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(124,58,237,0.15)]">
+                            <TrendingUp className="w-7 h-7 text-primary" strokeWidth={2.5} />
                         </div>
-                        <h2 className="text-lg font-black tracking-tighter uppercase italic">Control Financiero</h2>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-foreground leading-none font-display">
+                                Control <span className="text-gradient-gold italic">Financiero</span>
+                            </h1>
+                            <p className="text-muted-foreground mt-1 text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70">
+                                Egresos, caja y rentabilidad global
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -488,7 +641,7 @@ export default function FinanzasPage() {
                         if (!open) clearForm()
                     }}>
                         <DialogTrigger render={
-                            <Button className="bg-gradient-to-r from-[#D4AF37] to-[#F1C40F] hover:from-[#B8860B] hover:to-[#D4AF37] text-black font-bold uppercase tracking-tighter shadow-lg shadow-gold/20 h-11 px-6 rounded-xl">
+                            <Button className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 h-11 px-6 rounded-xl transition-all">
                                 <Plus className="w-5 h-5 mr-2" />
                                 Registrar Gasto
                             </Button>
@@ -597,8 +750,8 @@ export default function FinanzasPage() {
 
                                 <DialogFooter className="pt-4 gap-2">
                                     <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl text-muted-foreground/60 hover:text-foreground uppercase text-[10px] font-black tracking-widest">Cancelar</Button>
-                                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-8 h-11 rounded-xl shadow-lg shadow-primary/20">
-                                        {editingGasto ? 'Guardar Cambios' : 'Registrar Comisión'}
+                                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] px-8 h-11 rounded-xl shadow-md shadow-primary/10 transition-all">
+                                        {editingGasto ? 'Guardar Cambios' : 'Registrar Gasto'}
                                     </Button>
                                 </DialogFooter>
                             </form>
@@ -607,6 +760,275 @@ export default function FinanzasPage() {
                 </div>
             </header>
 
+            {/* ── TABS ─────────────────────────────────── */}
+            <div className="flex items-center gap-6 border-b border-border/40 pb-1 font-display">
+                <button
+                    onClick={() => setActiveFinanzasTab('gastos')}
+                    className={cn(
+                        "text-[10px] font-black uppercase tracking-[0.2em] pb-3 px-1 border-b-2 transition-all",
+                        activeFinanzasTab === 'gastos'
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    Egresos & Rentabilidad
+                </button>
+                <button
+                    onClick={() => { setActiveFinanzasTab('cierre_caja'); fetchCierreCajaHoy() }}
+                    className={cn(
+                        "text-[10px] font-black uppercase tracking-[0.2em] pb-3 px-1 border-b-2 transition-all flex items-center gap-2",
+                        activeFinanzasTab === 'cierre_caja'
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    <Banknote className="w-3 h-3" />
+                    Cierre de Caja
+                    {cierreCajaHoy?.estado === 'abierta' && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
+                </button>
+            </div>
+
+            {/* ── CIERRE DE CAJA TAB ────────────────────── */}
+            {activeFinanzasTab === 'cierre_caja' && (
+                <div className="space-y-5">
+                    {loadingCierre ? (
+                        <div className="flex items-center justify-center py-20">
+                            <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+                        </div>
+                    ) : (
+                        <>
+                        {/* Status banner */}
+                        <div className={cn(
+                            "p-4 rounded-2xl border flex items-center gap-4",
+                            cierreCajaHoy?.estado === 'cerrada'
+                                ? "bg-emerald-500/5 border-emerald-500/20"
+                                : cierreCajaHoy?.estado === 'abierta'
+                                    ? "bg-amber-500/5 border-amber-500/20"
+                                    : "bg-muted border-border"
+                        )}>
+                            <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                                cierreCajaHoy?.estado === 'cerrada' ? "bg-emerald-500/10 text-emerald-400"
+                                : cierreCajaHoy?.estado === 'abierta' ? "bg-amber-500/10 text-amber-400"
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                                <Banknote className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-xs font-black uppercase tracking-widest text-foreground">
+                                    {cierreCajaHoy?.estado === 'cerrada' ? 'Caja Cerrada Hoy'
+                                    : cierreCajaHoy?.estado === 'abierta' ? 'Caja Abierta'
+                                    : 'Sin Apertura de Caja Hoy'}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                                    {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                </p>
+                            </div>
+                            {cierreCajaHoy?.estado === 'cerrada' && (
+                                <div className={cn(
+                                    "text-right",
+                                )}
+                                >
+                                    <p className="text-[9px] text-muted-foreground uppercase font-bold">Diferencia</p>
+                                    <p className={cn(
+                                        "text-lg font-black tabular-nums",
+                                        cierreCajaHoy.diferencia === 0 ? "text-emerald-400"
+                                        : cierreCajaHoy.diferencia > 0 ? "text-blue-400"
+                                        : "text-red-400"
+                                    )}>
+                                        {cierreCajaHoy.diferencia >= 0 ? '+' : ''}{cierreCajaHoy.diferencia?.toFixed(2)}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            {/* LEFT: Apertura + Ventas del día */}
+                            <Card className="glass-card border-border p-5 space-y-5">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                                    Resumen del Día
+                                </h3>
+
+                                {/* Apertura */}
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Monto de Apertura</Label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black">$</span>
+                                            <Input
+                                                type="number"
+                                                value={montoApertura}
+                                                onChange={e => setMontoApertura(e.target.value)}
+                                                disabled={cierreCajaHoy?.estado === 'cerrada'}
+                                                className="pl-8 bg-muted border-border text-foreground font-bold focus:border-primary/50 rounded-xl"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        {(!cierreCajaHoy || cierreCajaHoy.estado !== 'cerrada') && (
+                                            <Button
+                                                onClick={handleAbrirCaja}
+                                                disabled={savingCierre || !montoApertura}
+                                                className="bg-primary hover:bg-primary/90 text-white font-black text-[9px] uppercase tracking-widest px-4 h-10 rounded-xl shrink-0 transition-all"
+                                            >
+                                                {cierreCajaHoy ? 'Actualizar' : 'Abrir Caja'}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Sales breakdown */}
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Ventas del Día</p>
+                                    <div className="space-y-2">
+                                        {[
+                                            { label: 'Efectivo', value: ventasHoy.efectivo, color: 'text-emerald-400', icon: '💵' },
+                                            { label: 'Tarjeta', value: ventasHoy.tarjeta, color: 'text-blue-400', icon: '💳' },
+                                            { label: 'Transferencia', value: ventasHoy.transferencia, color: 'text-purple-400', icon: '📲' },
+                                        ].map(item => (
+                                            <div key={item.label} className="flex items-center justify-between p-2.5 rounded-xl bg-muted border border-border">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm">{item.icon}</span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.label}</span>
+                                                </div>
+                                                <span className={cn("font-black text-sm tabular-nums", item.color)}>${item.value.toFixed(2)}</span>
+                                            </div>
+                                        ))}
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-red-500/5 border border-red-500/20">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm">🧾</span>
+                                                <span className="text-[10px] font-bold text-red-400/80 uppercase">Gastos en Efectivo</span>
+                                            </div>
+                                            <span className="font-black text-sm tabular-nums text-red-400">-${gastosEfectivoHoy.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Expected total */}
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-primary/60">Efectivo Esperado en Caja</p>
+                                        <p className="text-[8px] text-muted-foreground/40 font-medium mt-0.5">Apertura + Ventas Efectivo - Gastos</p>
+                                    </div>
+                                    <p className="text-2xl font-black text-primary tabular-nums">${expectedCash.toFixed(2)}</p>
+                                </div>
+                            </Card>
+
+                            {/* RIGHT: Arqueo (count & close) */}
+                            <Card className="glass-card border-border p-5 space-y-5">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                                    Arqueo de Caja
+                                </h3>
+
+                                {cierreCajaHoy?.estado === 'cerrada' ? (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: 'Esperado', value: cierreCajaHoy.monto_cierre_esperado, color: 'text-foreground' },
+                                                { label: 'Contado', value: cierreCajaHoy.monto_cierre_real, color: 'text-foreground' },
+                                            ].map(item => (
+                                                <div key={item.label} className="p-3 rounded-xl bg-muted border border-border text-center">
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">{item.label}</p>
+                                                    <p className={cn("text-lg font-black tabular-nums", item.color)}>${item.value?.toFixed(2)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className={cn(
+                                            "p-4 rounded-2xl border text-center",
+                                            cierreCajaHoy.diferencia === 0 ? "bg-emerald-500/5 border-emerald-500/20"
+                                            : cierreCajaHoy.diferencia > 0 ? "bg-blue-500/5 border-blue-500/20"
+                                            : "bg-red-500/5 border-red-500/20"
+                                        )}>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Diferencia</p>
+                                            <p className={cn(
+                                                "text-3xl font-black tabular-nums",
+                                                cierreCajaHoy.diferencia === 0 ? "text-emerald-400"
+                                                : cierreCajaHoy.diferencia > 0 ? "text-blue-400"
+                                                : "text-red-400"
+                                            )}>
+                                                {cierreCajaHoy.diferencia > 0 ? '+' : ''}{cierreCajaHoy.diferencia?.toFixed(2)}
+                                            </p>
+                                            <p className="text-[9px] text-muted-foreground/40 mt-2 uppercase font-bold">
+                                                {cierreCajaHoy.diferencia === 0 ? '✅ Sin discrepancias' : cierreCajaHoy.diferencia > 0 ? '📈 Sobrante (registrado en auditoría)' : '⚠️ Faltante (registrado en auditoría)'}
+                                            </p>
+                                        </div>
+                                        {cierreCajaHoy.observaciones && (
+                                            <p className="text-[10px] text-muted-foreground/50 italic text-center">{cierreCajaHoy.observaciones}</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {!cierreCajaHoy && (
+                                            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center">
+                                                <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest">⚠️ Abre caja primero ingresando el monto de apertura</p>
+                                            </div>
+                                        )}
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Efectivo Contado en Caja</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black">$</span>
+                                                <Input
+                                                    type="number"
+                                                    value={montoContado}
+                                                    onChange={e => setMontoContado(e.target.value)}
+                                                    className="pl-8 bg-muted border-border text-foreground font-bold focus:border-primary/50 rounded-xl text-lg h-12"
+                                                    placeholder="0.00"
+                                                    disabled={!cierreCajaHoy}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Live discrepancy preview */}
+                                        {montoContado && cierreCajaHoy && (
+                                            <div className={cn(
+                                                "p-3 rounded-xl border flex items-center justify-between",
+                                                parseFloat(montoContado) === expectedCash ? "bg-emerald-500/5 border-emerald-500/20"
+                                                : parseFloat(montoContado) > expectedCash ? "bg-blue-500/5 border-blue-500/20"
+                                                : "bg-red-500/5 border-red-500/20"
+                                            )}>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Diferencia estimada</span>
+                                                <span className={cn(
+                                                    "text-lg font-black tabular-nums",
+                                                    parseFloat(montoContado) === expectedCash ? "text-emerald-400"
+                                                    : parseFloat(montoContado) > expectedCash ? "text-blue-400" : "text-red-400"
+                                                )}>
+                                                    {parseFloat(montoContado) - expectedCash >= 0 ? '+' : ''}
+                                                    {(parseFloat(montoContado) - expectedCash).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Observaciones (opcional)</Label>
+                                            <Input
+                                                value={observacionesCierre}
+                                                onChange={e => setObservacionesCierre(e.target.value)}
+                                                className="bg-muted border-border text-foreground focus:border-primary/50 rounded-xl"
+                                                placeholder="Notas sobre el cierre..."
+                                                disabled={!cierreCajaHoy}
+                                            />
+                                        </div>
+
+                                        <Button
+                                            onClick={handleCerrarCaja}
+                                            disabled={savingCierre || !montoContado || !cierreCajaHoy}
+                                            className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-md shadow-primary/10 transition-all hover:opacity-90 disabled:opacity-40"
+                                        >
+                                            {savingCierre ? <RefreshCw className="w-4 h-4 animate-spin" /> : '🔒 Cerrar Caja y Registrar Auditoría'}
+                                        </Button>
+                                    </div>
+                                )}
+                            </Card>
+                        </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {activeFinanzasTab === 'gastos' && (<>
             {/* Business Metrics Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 leading-none">
                 <KPICard 
@@ -1024,19 +1446,18 @@ export default function FinanzasPage() {
                                         type="button" 
                                         variant="ghost" 
                                         onClick={() => setIsPayDialogOpen(false)}
-                                        className="flex-1 h-11 sm:h-14 rounded-xl sm:rounded-2xl text-muted-foreground/40 hover:bg-muted font-black uppercase tracking-widest text-[10px] border border-transparent hover:border-border"
+                                        className="flex-1 h-11 rounded-xl text-muted-foreground/40 hover:bg-muted font-black uppercase tracking-widest text-[10px] border border-transparent hover:border-border transition-all"
                                     >
                                         Cancelar
                                     </Button>
                                     <Button 
                                         onClick={() => handleConfirmPayment()}
                                         disabled={!metodoPago}
-                                        className="flex-[2] h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 group relative overflow-hidden disabled:opacity-50 disabled:grayscale"
+                                        className="flex-[2] h-11 rounded-xl bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[10px] shadow-md shadow-primary/10 transition-all disabled:opacity-50 disabled:grayscale"
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
                                         <span className="relative z-10 flex items-center justify-center gap-2">
                                             Confirmar Pago
-                                            <Check className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                                            <Check className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                                         </span>
                                     </Button>
                                 </div>
@@ -1048,6 +1469,7 @@ export default function FinanzasPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+            </>)}
             </div>
         </div>
     )

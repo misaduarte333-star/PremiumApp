@@ -671,8 +671,8 @@ export const CitaCard = memo(function CitaCard({
                                         cita.estado === 'finalizada' 
                                             ? "hidden" 
                                             : (esNoShow
-                                                ? "bg-amber-500 text-primary-foreground hover:bg-amber-400 border-amber-300 shadow-[0_5px_15px_rgba(245,158,11,0.2)] animate-pulse"
-                                                : "bg-gradient-gold text-primary-foreground hover:scale-[1.02] border border-primary/20 shadow-[0_5px_15px_rgba(234,179,8,0.15)]")
+                                                ? "bg-amber-500 text-black hover:bg-amber-400 border-amber-300 shadow-md shadow-amber-500/10 active:scale-95"
+                                                : "bg-gradient-gold text-black hover:bg-accent/90 border border-primary/20 shadow-md shadow-amber-500/10 active:scale-95")
                                     )}
                                 >
                                     <Play className="w-3.5 h-3.5 fill-current" />
@@ -706,7 +706,7 @@ export const CitaCard = memo(function CitaCard({
                                 size="lg"
                                 onClick={() => actualizarEstado('en_proceso')}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-primary/10 border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground shadow-[0_10px_40px_rgba(234,179,8,0.2)] transition-all flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-primary/10 border-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground shadow-md shadow-primary/10 transition-all flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <PlayCircle className="w-5 h-5" />
                                 Confirmar Inicio
@@ -718,7 +718,7 @@ export const CitaCard = memo(function CitaCard({
                                 size="lg"
                                 onClick={() => actualizarEstado('por_cobrar')}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-blue-600 text-primary-foreground hover:bg-blue-500 shadow-[0_15px_40px_rgba(59,130,246,0.3)] border-2 border-blue-400/50 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-blue-600 text-primary-foreground hover:bg-blue-500 shadow-md shadow-blue-600/10 border-2 border-blue-400/50 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <Scissors className="w-5 h-5" />
                                 Finalizar
@@ -730,7 +730,7 @@ export const CitaCard = memo(function CitaCard({
                                 size="lg"
                                 onClick={() => onCheckout ? onCheckout(cita) : setShowCheckout(true)}
                                 disabled={loading}
-                                className="h-auto py-4 px-6 rounded-2xl bg-emerald-500 text-primary-foreground hover:bg-emerald-400 shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-2 border-emerald-300 text-[11px] font-black uppercase tracking-[0.2em]"
+                                className="h-auto py-4 px-6 rounded-2xl bg-emerald-500 text-primary-foreground hover:bg-emerald-400 shadow-md shadow-emerald-500/10 border-2 border-emerald-300 text-[11px] font-black uppercase tracking-[0.2em]"
                             >
                                 <CreditCard className="w-5 h-5" />
                                 Cobrar
@@ -767,7 +767,7 @@ export const CitaCard = memo(function CitaCard({
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col gap-3 mt-4 p-6">
-                        <Button onClick={() => { setShowEarlyWarning(false); actualizarEstado('en_proceso') }} className="w-full bg-gradient-gold text-black font-black uppercase tracking-widest py-6">
+                        <Button onClick={() => { setShowEarlyWarning(false); actualizarEstado('en_proceso') }} className="w-full bg-gradient-gold text-black hover:bg-accent/90 font-black uppercase tracking-widest py-6">
                             Sí, Atender Ahora
                         </Button>
                         <Button variant="ghost" onClick={() => setShowEarlyWarning(false)} className="w-full text-foreground/40 hover:text-foreground hover:bg-muted font-black uppercase">

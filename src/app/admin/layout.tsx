@@ -17,7 +17,6 @@ const NAV_ITEMS = [
     { href: '/admin/barberos', icon: 'engineering', label: 'Staff', group: 'gestion' },
     { href: '/admin/servicios', icon: 'auto_fix_high', label: 'Servicios', group: 'gestion' },
     { href: '/admin/reportes', icon: 'monitoring', label: 'Reportes', group: 'analisis' },
-    { href: '/admin/finanzas', icon: 'account_balance_wallet', label: 'Finanzas', group: 'analisis' },
     { href: '/admin/configuracion', icon: 'tune', label: 'Configuración', group: 'sistema' },
 ]
 
@@ -37,9 +36,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isLowPerformance, setIsLowPerformance] = useState(false)
 
     useEffect(() => {
-        if (pathname === '/admin/login') { setIsCheckingAuth(false); return }
-        const session = sessionStorage.getItem('barbercloud_session') || localStorage.getItem('admin_session')
-        if (!session) { router.push('/admin/login') } else { setIsCheckingAuth(false) }
+        if (pathname === '/admin/login') { router.replace('/'); return }
+        const session = sessionStorage.getItem('sonorusapp_session') || localStorage.getItem('admin_session')
+        if (!session) { router.push('/') } else { setIsCheckingAuth(false) }
     }, [pathname, router])
 
     useEffect(() => {
@@ -57,9 +56,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const handleLogout = () => {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('admin_session')
-            sessionStorage.removeItem('barbercloud_session')
+            sessionStorage.removeItem('sonorusapp_session')
         }
-        router.push('/admin/login')
+        router.push('/')
     }
 
     const toggleTheme = () => {
@@ -114,12 +113,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <header className="lg:hidden h-14 px-4 border-b border-border/60 flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-xl z-30">
                 {/* Brand */}
                 <div className="flex items-center gap-2.5">
-                    <div className="size-8 rounded-lg bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shadow-[0_0_12px_-2px_rgba(212,175,55,0.5)]">
-                        <span className="text-black font-black text-sm">{businessName.charAt(0)}</span>
+                    <div className="size-8 rounded-lg bg-gradient-to-br from-primary/85 to-primary flex items-center justify-center shadow-[0_0_12px_-2px_rgba(124,58,237,0.5)]">
+                        <span className="text-white font-black text-sm">{businessName.charAt(0)}</span>
                     </div>
                     <span className="text-sm font-black tracking-[0.15em] uppercase">{businessName}</span>
                 </div>
-
+                
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                     <button onClick={toggleTheme}
@@ -149,19 +148,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <div className="relative flex items-center gap-3">
                         {/* Logo mark */}
                         <div className="relative shrink-0">
-                            <div className="size-11 rounded-xl bg-gradient-to-br from-primary/90 to-primary flex items-center justify-center shadow-[0_4px_20px_-4px_rgba(212,175,55,0.5)] border border-primary/30">
-                                <span className="text-black font-black text-lg">{businessName.charAt(0)}</span>
+                            <div className="size-11 rounded-xl bg-black/60 flex items-center justify-center border border-primary/30 p-1.5 shadow-[0_4px_20px_-4px_rgba(124,58,237,0.3)]">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src="/sonorus-logo.png"
+                                    alt="SonorusApp"
+                                    className="w-full h-full object-contain filter brightness-100"
+                                />
                             </div>
                             <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 border-2 border-card" />
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <h1 className="text-[13px] font-black tracking-[0.18em] text-foreground leading-tight truncate uppercase">
                                 {businessName}
                             </h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="material-symbols-outlined text-[10px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
-                                <p className="text-[9px] uppercase tracking-[0.3em] text-primary/70 font-black">Premium Suite</p>
+                                <p className="text-[9px] uppercase tracking-[0.3em] text-primary/70 font-black">Sonorus App</p>
                             </div>
                         </div>
                     </div>
@@ -232,42 +235,48 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* ────────────────────────────────────────────────────
                 MOBILE BOTTOM NAV
             ──────────────────────────────────────────────────── */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/95 border-t border-border/60 py-1 z-40 backdrop-blur-xl">
-                <div className="flex items-center justify-around px-1">
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-background/95 border-t border-border/60 py-1.5 z-40 backdrop-blur-xl">
+                <div className="flex items-center justify-around px-1 max-w-md mx-auto">
                     {NAV_ITEMS.slice(0, 5).map(item => {
                         const active = isActive(item.href)
                         return (
                             <Link key={item.href} href={item.href}
-                                className={`flex flex-col items-center gap-0.5 py-1 px-1 transition-all flex-1 max-w-[64px] ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-                                <span className={`material-symbols-outlined text-[18px] leading-none transition-all ${active ? 'scale-105' : ''}`}
+                                className={cn(
+                                    "flex flex-col items-center gap-0.5 py-1 px-1 transition-all flex-1 max-w-[64px] relative",
+                                    active ? 'text-primary' : 'text-muted-foreground'
+                                )}>
+                                <span className={cn("material-symbols-outlined text-[20px] leading-none transition-all duration-300", active && "scale-110")}
                                     style={active ? { fontVariationSettings: "'FILL' 1" } : {}}>
                                     {item.icon}
                                 </span>
-                                <span className="text-[6px] font-black tracking-wider uppercase text-center line-clamp-1">{item.label.split(' ')[0]}</span>
-                                {active && <div className="w-3 h-0.5 bg-primary rounded-full" />}
+                                <span className="text-[7px] font-black tracking-wider uppercase text-center line-clamp-1">{item.label.split(' ')[0]}</span>
+                                {active && <div className="absolute bottom-0 w-4 h-[3px] bg-primary rounded-full animate-pulse-glow" />}
                             </Link>
                         )
                     })}
                     
                     {/* More Menu Button */}
-                    <div className="relative">
+                    <div className="flex-1 max-w-[64px] flex justify-center relative">
                         <button onClick={() => setShowMobileMenu(!showMobileMenu)}
-                            className={`flex flex-col items-center gap-0.5 py-1 px-1 transition-all flex-1 max-w-[64px] ${showMobileMenu ? 'text-primary' : 'text-muted-foreground'}`}>
-                            <span className="material-symbols-outlined text-[18px] leading-none">more_vert</span>
-                            <span className="text-[6px] font-black tracking-wider uppercase">Más</span>
+                            className={cn(
+                                "flex flex-col items-center gap-0.5 py-1 px-1 transition-all w-full",
+                                showMobileMenu ? 'text-primary' : 'text-muted-foreground'
+                            )}>
+                            <span className="material-symbols-outlined text-[20px] leading-none">more_vert</span>
+                            <span className="text-[7px] font-black tracking-wider uppercase text-center">Más</span>
                         </button>
                         
                         {/* Dropdown Menu */}
                         {showMobileMenu && (
-                            <div className="absolute bottom-full right-0 mb-1 bg-card border border-border/60 rounded-lg shadow-lg overflow-hidden min-w-[130px] z-50">
+                            <div className="absolute bottom-full right-0 mb-2 bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden min-w-[140px] z-50 animate-fade-in">
                                 {NAV_ITEMS.slice(5).map(item => {
                                     const active = isActive(item.href)
                                     return (
                                         <Link key={item.href} href={item.href}
                                             onClick={() => setShowMobileMenu(false)}
                                             className={cn(
-                                                "flex items-center gap-2 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider border-b border-border/30 last:border-0 transition-colors",
-                                                active ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-muted/60'
+                                                "flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider border-b border-border/30 last:border-0 transition-colors",
+                                                active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/60'
                                             )}>
                                             <span className="material-symbols-outlined text-xs leading-none" style={active ? { fontVariationSettings: "'FILL' 1" } : {}}>
                                                 {item.icon}
@@ -307,11 +316,11 @@ function NavItem({ href, icon, label, active }: { href: string; icon: string; la
         <Link href={href} className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
             active
-                ? "bg-primary text-black"
+                ? "bg-primary text-white"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
         )}>
             {active && (
-                <div className="absolute inset-0 rounded-xl shadow-[0_4px_15px_-4px_rgba(212,175,55,0.35)] pointer-events-none" />
+                <div className="absolute inset-0 rounded-xl shadow-[0_4px_15px_-4px_rgba(124,58,237,0.35)] pointer-events-none" />
             )}
             <span className={cn(
                 "material-symbols-outlined text-[18px] leading-none shrink-0 transition-transform duration-200",

@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSessionToken('')
         // Notify of session change before redirect
         window.dispatchEvent(new Event('admin-session-changed'))
-        window.location.href = '/admin/login'
+        window.location.href = '/'
     }, [])
 
     useEffect(() => {
